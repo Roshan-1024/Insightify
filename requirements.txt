@@ -1,0 +1,7 @@
+openai-whisper
+torch
+ffmpeg-python
+numpy
+tqdm
+google-generativeai
+python-dotenv

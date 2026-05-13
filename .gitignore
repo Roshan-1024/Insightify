@@ -9,8 +9,10 @@ build/
 dist/
 
 # Virtual environments
-venv/
-.env/
+venv*/
+
+# Environment variables
+.env
 
 # Local data
 data/
@@ -27,3 +29,6 @@ models/*.bin
 # Logs
 *.log
 logs/
+
+# Outputs
+output*
