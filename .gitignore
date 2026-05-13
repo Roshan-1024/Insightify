@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+venv/
+.env/
+
+# Local data
+data/
+uploads/
+audio/
+frames/
+outputs/
+
+# Models
+models/*.onnx
+models/*.pt
+models/*.bin
+
+# Logs
+*.log
+logs/
