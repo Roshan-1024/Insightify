@@ -32,3 +32,7 @@ logs/
 
 # Outputs
 output*
+
+# frontend
+frontend/node_modules/
+frontend/dist/
