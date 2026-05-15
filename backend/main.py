@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routes import router
+from backend.routes import router
 
 app = FastAPI(title="Insightify App")
 app.include_router(router)
