@@ -1,122 +1,53 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from 'react';
+import DropZone from './components/DropZone';
+import JobList from './components/JobList';
+import './index.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [jobs, setJobs] = useState([]);
+
+  // Handles the initial file submission to FastAPI
+  const handleUpload = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Create a temporary local job to show in the UI immediately
+    const tempId = `temp-${Date.now()}`;
+    setJobs(prev => [{ job_id: tempId, filename: file.name, status: 'uploading' }, ...prev]); // [newJob with temp id, A, B, C]
+
+    try {
+      // send the binary of the video to backend
+      // Content-type: multipart/form-data
+      const response = await fetch('/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      // Replace the temp job id with the real job_id from the backend
+      setJobs(prev => prev.map(job => 
+        job.job_id === tempId ? { job_id: data.job_id, filename: file.name, status: 'processing' } : job
+      ));
+    } catch (error) {
+      setJobs(prev => prev.map(job => 
+        job.job_id === tempId ? { ...job, status: 'failed', error: 'Upload failed' } : job
+      ));
+    }
+  };
+
+  // Allows child components to update their own state in the main list
+  const updateJob = (id, updatedData) => {
+    setJobs(prev => prev.map(job => job.job_id === id ? { ...job, ...updatedData } : job));
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}>
+      <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>Insightify Engine</h1>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Upload a video to extract structured intelligence.</p>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <DropZone onUpload={handleUpload} />
+      <JobList jobs={jobs} updateJob={updateJob} />
+    </div>
+  );
 }
-
-export default App
