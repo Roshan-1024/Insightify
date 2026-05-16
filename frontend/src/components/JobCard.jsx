@@ -13,7 +13,7 @@ export default function JobCard({ job, updateJob }) {
           if (res.ok) {
             const data = await res.json();
             // If the backend is done (completed or failed), update main state and stop polling
-            if (data.status !== 'processing') {
+            if (data.status === 'error' || data.status === 'completed') {
               updateJob(job.job_id, data);
               clearInterval(interval);
             }

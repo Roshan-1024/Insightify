@@ -1,18 +1,14 @@
 from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException
-from insightify.transcriber import Transcriber
-from insightify.insights import InsightEngine
-from backend.schemas import TranscriptionResponse
+from backend.worker import process_video
 import uuid
 import mimetypes
-import os
+import redis
+import json
+import shutil
+
 
 router = APIRouter()
-
-transcriber = Transcriber(model_size="tiny")
-engine = InsightEngine()
-
-# Volatile in-memory storage. Later Redis will be used.
-jobs = {}
+redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
 
 ALLOWED_MIME_TYPES = {
     "video/mp4",
@@ -38,45 +34,28 @@ async def analyze_video(background_tasks: BackgroundTasks, file: UploadFile = Fi
     file_path = f"data/uploads/{job_id}{extension}"
 
     # write locally (for now...)
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
     # Initialize job state
-    jobs[job_id] = {
+    initial_state = {
         "status": "processing",
         "original_filename": file.filename,
-        "result": None,
+        "transcription": None,
         "insights": None
     }
 
-    background_tasks.add_task(run_inference, job_id, file_path)
+    redis_client.set(job_id, json.dumps(initial_state))
+
+    # Send task to Celery worker queue
+    process_video.delay(job_id, file_path)
 
     return {"job_id": job_id, "status": "accepted"}
 
 @router.get("/status/{job_id}")
 async def get_status(job_id: str):
-    if job_id not in jobs:
+    data = redis_client.get(job_id)
+    if not data:
         raise HTTPException(status_code=404, detail="Job not found")
-    return jobs[job_id]
+    return json.loads(data)
 
-def run_inference(job_id: str, file_path: str):
-    try:
-        # Generate Transcription with timestamps
-        result = transcriber.transcribe(file_path)
-
-        # Generate insights using LLM
-        insights = engine.generate(result["full_text"])
-
-        jobs[job_id].update({
-            "status": "completed",
-            "result": result,
-            "insights": insights
-        })
-
-    except Exception as e:
-        jobs[job_id] = {"status": "failed", "error": str(e)}
-
-    finally: # cleanup
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            print("Uploaded file with id '{job_id}' cleaned.")
