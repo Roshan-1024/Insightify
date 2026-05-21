@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/analyze': 'http://127.0.0.1:8000',
-      '/status': 'http://127.0.0.1:8000'
+      '/analyze': 'http://api:8000',
+      '/status': 'http://api:8000'
     }
   }
 })

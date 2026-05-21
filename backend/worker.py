@@ -9,10 +9,14 @@ from backend.models import VideoBase
 
 
 
+REDIS_URL = os.getenv(
+    "REDIS_URL",
+    "redis://redis:6379/0"
+)
 celery_app = Celery(
     "insightify_worker",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0"
+    broker=REDIS_URL,
+    backend=REDIS_URL
 )
 
 print("Loading AI model into RAM/VRAM")
