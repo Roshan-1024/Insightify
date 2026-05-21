@@ -1,13 +1,14 @@
-import redis
+import os
+import json
 from celery import Celery
+
 from insightify.insights import InsightEngine
 from insightify.transcriber import Transcriber
-redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
-import json
-import os
+from backend.database import SessionLocal
+from backend.models import VideoBase
 
 
-redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+
 celery_app = Celery(
     "insightify_worker",
     broker="redis://localhost:6379/0",
@@ -20,42 +21,48 @@ engine = InsightEngine()
 print("Models loaded and worker is ready")
 
 
-def update_data(job_id, data):
-    current_data = json.loads(redis_client.get(job_id) or "{}")
-    current_data.update(data)
-    redis_client.set(job_id, json.dumps(current_data))
-
-
 @celery_app.task(name="process_video")
 def process_video(job_id: str, file_path: str):
+    db = SessionLocal()
+
+    # Fetch the row created in analyze endpoint
     try:
+        video = db.query(VideoBase).filter(VideoBase.id == job_id).first()
+        if not video:
+            print(f"Video {job_id} not found in database")
+            return
+
         # Generate Transcription with timestamps
         print(f"Transcribing {job_id}")
-        update_data(job_id, {
-            "status": "transcribing",
-        })
+        video.status = "processing"
+        db.commit()
+
         transcription = transcriber.transcribe(file_path)
-        update_data(job_id, {
-            "status": "analyzing",
-            "transcription": transcription
-        })
+
+        video.transcript = json.dumps(transcription)
+        video.status = "analyzing"
+        db.commit()
 
         # Generate insights using LLM
         print(f"Generating insights {job_id}")
         insights = engine.generate(transcription["full_text"])
 
-        update_data(job_id, {
-            "status": "completed",
-            "insights": insights
-        })
+        video.status = "completed"
+        video.insights = insights
+        db.commit()
 
     except Exception as e:
-        update_data(job_id, {
-            "status": "failed",
-            "error": str(e)
-        })
+        db.rollback()
+        video = db.query(VideoBase).filter(VideoBase.id == job_id).first()
+        if video:
+            video.status = "failed"
+            video.error = str(e)
+            db.commit()
+
+        print(f"Worker failed on {job_id}: {str(e)}")
 
     finally: # cleanup
+        db.close()
         if os.path.exists(file_path):
             os.remove(file_path)
             print(f"Uploaded file with id '{job_id}' cleaned.")
