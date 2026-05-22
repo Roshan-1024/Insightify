@@ -6,14 +6,15 @@ export default function JobCard({ job, updateJob }) {
   // The Short Polling Logic
   useEffect(() => {
     let interval;
-    if (job.status === 'processing') {
+    // Keep polling if it's processing OR analyzing
+    if (job.status === 'processing' || job.status === 'analyzing') {
       interval = setInterval(async () => {
         try {
           const res = await fetch(`/status/${job.job_id}`);
           if (res.ok) {
             const data = await res.json();
-            // If the backend is done (completed or failed), update main state and stop polling
-            if (data.status === 'error' || data.status === 'completed') {
+            // Stop polling if completed, or if it hits the "failed" status from worker.py
+            if (data.status === 'failed' || data.status === 'completed') {
               updateJob(job.job_id, data);
               clearInterval(interval);
             }
@@ -27,50 +28,65 @@ export default function JobCard({ job, updateJob }) {
   }, [job.status, job.job_id, updateJob]);
 
   const isCompleted = job.status === 'completed';
+  const isFailed = job.status === 'failed' || job.status === 'error';
+  const isExpandable = isCompleted || isFailed;
 
   return (
     <div style={{
       backgroundColor: 'var(--surface-color)',
-      border: `1px solid var(--border-color)`,
+      border: `1px solid ${isFailed ? '#ef4444' : 'var(--border-color)'}`,
       borderRadius: '8px',
       overflow: 'hidden'
     }}>
       {/* Header Bar */}
       <div 
-        onClick={() => isCompleted && setExpanded(!expanded)}
+        onClick={() => isExpandable && setExpanded(!expanded)}
         style={{
           padding: '16px 20px',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          cursor: isCompleted ? 'pointer' : 'default',
-          borderBottom: expanded ? '1px solid var(--border-color)' : 'none'
+          cursor: isExpandable ? 'pointer' : 'default',
+          borderBottom: expanded ? '1px solid var(--border-color)' : 'none',
+          backgroundColor: isFailed ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
         }}
       >
         <div style={{ fontWeight: '500' }}>{job.filename}</div>
-        <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
+        <div style={{ fontSize: '14px', color: isFailed ? '#ef4444' : 'var(--text-secondary)' }}>
           <span className={`status-dot status-${job.status}`}></span>
           {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
         </div>
       </div>
+
+      {/* Accordion Payload (Error Message) */}
+      {expanded && isFailed && (
+        <div style={{ padding: '20px', backgroundColor: 'rgba(239, 68, 68, 0.1)' }}>
+          <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: '#ef4444', marginBottom: '8px' }}>Error Details</h3>
+          <p style={{ lineHeight: '1.6', fontSize: '14px', color: '#f87171', fontFamily: 'monospace', margin: 0 }}>
+            {job.error || "An unknown error occurred during processing."}
+          </p>
+        </div>
+      )}
 
       {/* Accordion Payload (Insights) */}
       {expanded && isCompleted && job.insights && (
         <div style={{ padding: '20px', backgroundColor: 'rgba(0,0,0,0.2)' }}>
           
           <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>Summary</h3>
-          <p style={{ lineHeight: '1.6', fontSize: '15px', marginBottom: '24px' }}>{job.insights.summary}</p>
+          <p style={{ lineHeight: '1.6', fontSize: '15px', marginBottom: '24px' }}>
+            {job.insights?.summary || "No summary available."}
+          </p>
 
           <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>Key Points</h3>
           <ul style={{ paddingLeft: '20px', margin: '0 0 24px 0', fontSize: '15px', lineHeight: '1.6' }}>
-            {job.insights.key_points.map((point, i) => (
+            {job.insights?.key_points?.map((point, i) => (
               <li key={i} style={{ marginBottom: '8px' }}>{point}</li>
-            ))}
+            )) || <li>No key points identified.</li>}
           </ul>
 
           <h3 style={{ fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '12px' }}>Topics</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {job.insights.topics.map((topic, i) => (
+            {job.insights?.topics?.map((topic, i) => (
               <span key={i} style={{
                 backgroundColor: 'var(--border-color)',
                 padding: '4px 12px',
@@ -80,7 +96,7 @@ export default function JobCard({ job, updateJob }) {
               }}>
                 {topic}
               </span>
-            ))}
+            )) || <span>No topics found.</span>}
           </div>
 
         </div>

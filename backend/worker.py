@@ -51,6 +51,10 @@ def process_video(job_id: str, file_path: str):
         print(f"Generating insights {job_id}")
         insights = engine.generate(transcription["full_text"])
 
+        # Check if insights generation silently failed
+        if "error" in insights:
+            raise Exception(f"Error generating insights: {insights['error']}")
+
         video.status = "completed"
         video.insights = insights
         db.commit()
