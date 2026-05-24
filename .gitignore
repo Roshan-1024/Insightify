@@ -14,27 +14,24 @@ venv*/
 # Environment variables
 .env
 
-# Local data
-data/
-uploads/
-audio/
-frames/
-outputs/
+# Backend Local Data
+backend/data/
+backend/uploads/
+backend/outputs/
 
-# Models
-models/*.onnx
-models/*.pt
-models/*.bin
+# Backend Models (Ignore large weights)
+backend/models/*.onnx
+backend/models/*.pt
+backend/models/*.bin
 
 # Logs
 *.log
 logs/
 
-# Outputs
+# Outputs & Planning
 output*
+roadmap*
 
-# frontend
+# Frontend
 frontend/node_modules/
 frontend/dist/
-
-roadmap*
