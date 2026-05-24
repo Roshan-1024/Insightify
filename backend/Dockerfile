@@ -13,3 +13,5 @@ RUN uv pip install --system --no-cache torch torchvision torchaudio --index-url 
 COPY requirements.txt .
 
 RUN uv pip install --system --no-cache -r requirements.txt
+
+COPY . .

@@ -17,9 +17,8 @@ services:
 
   api:
     build: 
-      context: .
-      dockerfile: backend/Dockerfile
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+      context: ./backend
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     environment:
@@ -27,7 +26,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - .:/app
+      - ./backend:/app
       - shared_uploads:/app/data/uploads
     depends_on:
       - db
@@ -35,15 +34,14 @@ services:
 
   worker:
     build: 
-      context: .
-      dockerfile: backend/Dockerfile
-    command: celery -A backend.worker:celery_app worker --loglevel=info --pool=solo
+      context: ./backend
+    command: celery -A worker:celery_app worker --loglevel=info --pool=solo
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/insightify
       - REDIS_URL=redis://redis:6379/0
       - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - .:/app
+      - ./backend:/app
       - shared_uploads:/app/data/uploads
     depends_on:
       - db
