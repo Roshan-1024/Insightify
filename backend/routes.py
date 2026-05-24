@@ -5,9 +5,9 @@ import shutil
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
-from backend.models import VideoBase
-from backend.worker import process_video
+from database import get_db
+from models import VideoBase
+from worker import process_video
 
 
 

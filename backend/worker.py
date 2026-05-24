@@ -4,8 +4,8 @@ from celery import Celery
 
 from insightify.insights import InsightEngine
 from insightify.transcriber import Transcriber
-from backend.database import SessionLocal
-from backend.models import VideoBase
+from database import SessionLocal
+from models import VideoBase
 
 
 
